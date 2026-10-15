@@ -53,12 +53,21 @@ abstract class ComponentSelectionController<T extends ComponentSelectionBase>
       (data['allControllers'] as Map?)?.cast<String, TextEditingController>() ??
       const {};
 
+  bool get dependenciesReady => component.dependsOn.every((depId) {
+        final controller = allControllers[depId];
+        return controller != null && controller.text.trim().isNotEmpty;
+      });
+
   @override
   void onInit() {
     super.onInit();
     setupListeners();
     if (component.httpData != null && component.httpData!.url.isNotEmpty) {
-      fetchOptions();
+      if (dependenciesReady) {
+        fetchOptions();
+      } else {
+        options.clear();
+      }
     } else {
       loadStaticOptions();
     }
@@ -98,7 +107,13 @@ abstract class ComponentSelectionController<T extends ComponentSelectionBase>
     resetSelection();
     updateTargetController('');
     if (component.httpData != null && component.httpData!.url.isNotEmpty) {
-      fetchOptions();
+      if (dependenciesReady) {
+        fetchOptions();
+      } else {
+        options.clear();
+        error.value = null;
+        isLoading.value = false;
+      }
     }
   }
 

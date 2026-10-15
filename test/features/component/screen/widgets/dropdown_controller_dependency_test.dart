@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flx_nocode_flutter/core/network/models/http_data.dart';
 import 'package:flx_nocode_flutter/features/component/models/component_dropdown.dart';
 import 'package:flx_nocode_flutter/features/component/screen/widgets/component_dropdown_controller.dart';
 import 'package:flx_nocode_flutter/src/app/model/configuration.dart';
@@ -36,6 +37,56 @@ void main() {
   });
 
   group('ComponentDropdownController Dependency Tests', () {
+    testWidgets('does not fetch until a required department is selected',
+        (tester) async {
+      final departmentController = TextEditingController();
+      component = ComponentDropdown(
+        id: 'initiator_nip',
+        label: 'Inisiator',
+        options: const [],
+        dependsOn: ['initiator_department_id'],
+        httpData: HttpData(
+          method: 'GET',
+          url: 'https://example.test/users?department_id.eq={{form.initiator_department_id}}',
+          headers: const {},
+          body: const {},
+          mockEnabled: true,
+          mockData: {
+            'data': [
+              {'nip': '1001', 'name': 'Tester'},
+            ],
+          },
+        ),
+        optionKey: 'nip',
+        optionLabel: '{{item.name}}',
+      );
+      final dropdownController = ComponentDropdownController(
+        component: component,
+        data: {
+          'controller': targetCtrl,
+          'allControllers': <String, TextEditingController>{
+            'initiator_nip': targetCtrl,
+            'initiator_department_id': departmentController,
+          },
+          'data': <String, dynamic>{},
+          'form': <String, dynamic>{'initiator_department_id': ''},
+        },
+      );
+
+      await tester.runAsync(() async {
+        dropdownController.onInit();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(dropdownController.options, isEmpty);
+
+        departmentController.text = 'AT';
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(dropdownController.options, hasLength(1));
+      });
+
+      dropdownController.onClose();
+      departmentController.dispose();
+    });
+
     test('updateData should trigger refresh when dependency changes', () {
       final controller = ComponentDropdownController(component: component, data: data);
       
